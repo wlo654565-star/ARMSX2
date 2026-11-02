@@ -84,6 +84,8 @@ import com.armsx2.ui.Colors
 import com.armsx2.ui.InGameOverlay
 import com.armsx2.ui.WindowImpl
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kr.co.iefriends.pcsx2.NativeApp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.unit.Density
@@ -2169,6 +2171,8 @@ private fun sendStickAxis(code: Int, value: Int) {
 /** Per-finger state for [FullHalfStickLayer]: which half it owns, its floating origin, last emit. */
 private class HalfStickTrack(val leftHalf: Boolean, val origin: Offset) {
     var last: StickEmit = StickEmit()
+	    var prev: Offset = origin
+    var releaseJob: Job? = null
 }
 
 private val HalfStickLeftCodes = StickCodes(xPos = 111, xNeg = 113, yPos = 112, yNeg = 110)
@@ -2308,6 +2312,21 @@ private class HalfStickInputNode(private var params: HalfStickParams) : Modifier
             val scale = if (r > p.capPx) p.capPx / r else 1f
             var nx = ((dx * scale) / p.capPx).coerceIn(-1f, 1f)
             var ny = ((dy * scale) / p.capPx).coerceIn(-1f, 1f)
+			            if (!t.leftHalf) {
+                val ddx = ch.position.x - t.prev.x
+                val ddy = ch.position.y - t.prev.y
+                t.prev = ch.position
+                nx = (ddx * 0.08f).coerceIn(-1f, 1f)
+                ny = (ddy * 0.08f).coerceIn(-1f, 1f)
+                t.releaseJob?.cancel()
+                t.releaseJob = coroutineScope.launch {
+                    delay(40)
+                    if (t.last.any()) {
+                        releaseStick(halfStickCodes(false), t.last)
+                        t.last = StickEmit()
+                    }
+                }
+						}
             if (ControllerMappings.stickSwapXY(leftStick)) { val tmp = nx; nx = ny; ny = tmp }
             if (ControllerMappings.stickInvertX(leftStick)) nx = -nx
             if (ControllerMappings.stickInvertY(leftStick)) ny = -ny
