@@ -1910,15 +1910,17 @@ private fun StickWidget(cfg: TouchButtonCfg, edit: Boolean) {
                             }
                         }
                         val o = origin.value!!
-                        val dx = tracked.position.x - o.x
-                        val dy = tracked.position.y - o.y
-                        val r = hypot(dx, dy)
-                        val scale = if (r > capPx) capPx / r else 1f
-                        val capDx = dx * scale
-                        val capDy = dy * scale
-                        thumb.value = Offset(capDx, capDy)
-                        var nx = (capDx / capPx).coerceIn(-1f, 1f)
-                        var ny = (capDy / capPx).coerceIn(-1f, 1f)
+val dx = tracked.position.x - o.x
+val dy = tracked.position.y - o.y
+val r = hypot(dx, dy)
+val scale = if (r > capPx) capPx / r else 1f
+val capDx = dx * scale
+val capDy = dy * scale
+thumb.value = Offset(dx, dy)
+var nx = (dx / capPx).coerceIn(-1f, 1f)
+var ny = (dy / capPx).coerceIn(-1f, 1f)
+
+                         
                         // Honor the per-stick axis correction (swap first, then inverts)
                         // exactly like the physical-pad path (MainActivityRuntime.dispatchStick) — the
                         // tester's "Right Stick Invert Y works on a gamepad but the touch
