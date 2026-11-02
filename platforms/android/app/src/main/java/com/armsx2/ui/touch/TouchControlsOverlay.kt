@@ -1917,8 +1917,8 @@ val scale = if (r > capPx) capPx / r else 1f
 val capDx = dx * scale
 val capDy = dy * scale
 thumb.value = Offset(dx, dy)
-var nx = (dx / capPx).coerceIn(-1f, 1f)
-var ny = (dy / capPx).coerceIn(-1f, 1f)
+var nx = (dx * 0.05f).coerceIn(-1f, 1f)
+var ny = (dy * 0.05f).coerceIn(-1f, 1f)
 
                          
                         // Honor the per-stick axis correction (swap first, then inverts)
