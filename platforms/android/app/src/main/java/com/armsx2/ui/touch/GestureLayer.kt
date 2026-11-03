@@ -130,7 +130,28 @@ private class GestureInputNode(private var params: GestureParams) : Modifier.Nod
                 continue
             }
 
-                        if (ch.pressed) {
+                            override fun onPointerEvent(pointerEvent: PointerEvent, pass: PointerEventPass, bounds: IntSize) {
+        if (pass != PointerEventPass.Final) return
+        val p = params
+        for (ch in pointerEvent.changes) {
+            if (ch.changedToDownIgnoreConsumed()) {
+                // Reject a DOWN a control already claimed, and ignore extra fingers.
+                if (ch.isConsumed || tracking != null) continue
+                tracking = ch.id
+                startPos = ch.position
+                startTime = ch.uptimeMillis
+                fired = false
+                continue
+            }
+            if (ch.id != tracking) continue
+            // A control took this finger after all: it slid onto a button. Then it is a press on
+            // that button, not a gesture.
+            if (ch.isConsumed) {
+                tracking = null
+                continue
+            }
+
+            if (ch.pressed) {
                 val d = ch.position - startPos
                 // Factor de sensibilidad para convertir el desplazamiento en ejes de joystick
                 val sensFactor = 0.05f 
@@ -150,6 +171,20 @@ private class GestureInputNode(private var params: GestureParams) : Modifier.Nod
                     kr.co.iefriends.pcsx2.NativeApp.setPadButtonForPort(TouchControls.playerPort, codeY, scaledY, scaledY > 0)
                 }
             } else {
+                // Lift. A short, near-stationary press is a tap; two in 300ms is a double-tap.
+                val now = ch.uptimeMillis
+                val moved = (ch.position - startPos).getDistance()
+                if (!fired && moved <= p.tapSlop && now - startTime <= 250) {
+                    val nearLast = (ch.position - lastTapPos).getDistance() <= p.tapSlop * 3f
+                    if (now - lastTapTime <= 300 && nearLast) {
+                        if (p.holdMode) toggleLatch(p.doubleTap) else pulse(p.doubleTap)
+                        lastTapTime = 0L // consumed; don't chain a third tap
+                    } else {
+                        lastTapTime = now
+                        lastTapPos = ch.position
+                    }
+                }
+
                 // Al soltar el dedo, reseteamos los ejes del stick derecho a cero
                 runCatching {
                     kr.co.iefriends.pcsx2.NativeApp.setPadButtonForPort(TouchControls.playerPort, 121, 0, false)
@@ -158,7 +193,10 @@ private class GestureInputNode(private var params: GestureParams) : Modifier.Nod
                     kr.co.iefriends.pcsx2.NativeApp.setPadButtonForPort(TouchControls.playerPort, 120, 0, false)
                 }
                 tracking = null
-                        }
+            }
+        }
+    }
+
                         
             } else {
                 // Lift. A short, near-stationary press is a tap; two in 300ms is a double-tap.
