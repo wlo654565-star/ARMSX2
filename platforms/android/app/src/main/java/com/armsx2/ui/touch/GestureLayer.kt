@@ -130,19 +130,36 @@ private class GestureInputNode(private var params: GestureParams) : Modifier.Nod
                 continue
             }
 
-            if (ch.pressed) {
-                if (fired) continue
+                        if (ch.pressed) {
                 val d = ch.position - startPos
-                if (abs(d.x) >= p.threshold || abs(d.y) >= p.threshold) {
-                    // Dominant axis wins, so a diagonal drag fires one direction rather than two.
-                    val code = if (abs(d.x) > abs(d.y)) {
-                        if (d.x > 0) p.right else p.left
-                    } else {
-                        if (d.y > 0) p.down else p.up
-                    }
-                    pulse(code)
-                    fired = true
+                // Factor de sensibilidad para convertir el desplazamiento en ejes de joystick
+                val sensFactor = 0.05f 
+                val axisX = (d.x * sensFactor).coerceIn(-1f, 1f)
+                val axisY = (d.y * sensFactor).coerceIn(-1f, 1f)
+
+                // Convertimos la magnitud a escala de pad de PS2 (rango 0 a 32767)
+                val scaledX = (abs(axisX) * 32767f).toInt()
+                val scaledY = (abs(axisY) * 32767f).toInt()
+
+                // Códigos estándar del stick derecho en ARMSX2 (R_STICK X/Y)
+                val codeX = if (axisX > 0) 121 else 123
+                val codeY = if (axisY > 0) 122 else 120
+
+                runCatching {
+                    kr.co.iefriends.pcsx2.NativeApp.setPadButtonForPort(TouchControls.playerPort, codeX, scaledX, scaledX > 0)
+                    kr.co.iefriends.pcsx2.NativeApp.setPadButtonForPort(TouchControls.playerPort, codeY, scaledY, scaledY > 0)
                 }
+            } else {
+                // Al soltar el dedo, reseteamos los ejes del stick derecho a cero
+                runCatching {
+                    kr.co.iefriends.pcsx2.NativeApp.setPadButtonForPort(TouchControls.playerPort, 121, 0, false)
+                    kr.co.iefriends.pcsx2.NativeApp.setPadButtonForPort(TouchControls.playerPort, 123, 0, false)
+                    kr.co.iefriends.pcsx2.NativeApp.setPadButtonForPort(TouchControls.playerPort, 122, 0, false)
+                    kr.co.iefriends.pcsx2.NativeApp.setPadButtonForPort(TouchControls.playerPort, 120, 0, false)
+                }
+                tracking = null
+                        }
+                        
             } else {
                 // Lift. A short, near-stationary press is a tap; two in 300ms is a double-tap.
                 val now = ch.uptimeMillis
