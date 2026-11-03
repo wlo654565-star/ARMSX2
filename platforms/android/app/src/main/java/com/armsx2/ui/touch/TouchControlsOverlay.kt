@@ -2315,8 +2315,6 @@ private class HalfStickInputNode(private var params: HalfStickParams) : Modifier
             var nx = ((dx * scale) / p.capPx).coerceIn(-1f, 1f)
             var ny = ((dy * scale) / p.capPx).coerceIn(-1f, 1f)
 			            
-                
-						}
             if (ControllerMappings.stickSwapXY(leftStick)) { val tmp = nx; nx = ny; ny = tmp }
             if (ControllerMappings.stickInvertX(leftStick)) nx = -nx
             if (ControllerMappings.stickInvertY(leftStick)) ny = -ny
